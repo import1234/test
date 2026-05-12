@@ -2,46 +2,56 @@ import requests
 import time
 import random
 import os
+from datetime import datetime
 
-# GitHub Secrets에서 숨겨둔 값을 안전하게 불러옵니다
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK")
+# 설정 불러오기
+WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK")
 MY_COOKIE = os.environ.get("NINTENDO_COOKIE")
 MY_XSRF = os.environ.get("NINTENDO_XSRF")
+# 수동 실행인지 확인하기 위한 환경 변수 (YML에서 설정)
+IS_MANUAL = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
 
-# requests 라이브러리는 쿠키를 딕셔너리가 아닌 생 문자열(String)로 헤더에 넣어도 잘 작동합니다.
+def send_discord(message):
+    try:
+        requests.post(WEBHOOK_URL, json={'content': message})
+    except Exception as e:
+        print(f"디스코드 전송 실패: {e}")
+
+# 1. 수동 시작 알림 (버튼 눌렀을 때만 실행)
+if IS_MANUAL:
+    send_discord("▶️ [시스템] 닌텐도 뮤지엄 예매 사이트 감시 시작!")
+
+# 2. 생존 신호 알림 (매시간 정각~5분 사이에 실행되는 회차에서만)
+now = datetime.now()
+if now.minute < 5:
+    send_discord(f"🟢 [생존신호] {now.hour}시 정각 감시 중... (현재 쿠키 생존 확인)")
+
+# 헤더 설정
 headers = {
     'accept': 'application/json, text/plain, */*',
-    'accept-language': 'ko-KR,ko;q=0.9',
-    'priority': 'u=1, i',
     'referer': 'https://museum-tickets.nintendo.com/en/calendar',
-    'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-origin',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-    'x-requested-with': 'XMLHttpRequest',
     'x-xsrf-token': MY_XSRF,
     'cookie': MY_COOKIE
 }
-
-params = {
-    'target_year': '2026',
-    'target_month': '5',
-}
-
+params = {'target_year': '2026', 'target_month': '5'}
 URL = 'https://museum-tickets.nintendo.com/en/api/calendar'
+TARGET_DATES = ["2026-05-23", "2026-05-24", "2026-05-25"]
 
-# 추적할 날짜 (13일, 23일, 24일, 25일)
-TARGET_DATES = ["2026-05-13", "2026-05-23", "2026-05-24", "2026-05-25"]
+# 시간 측정 시작
+start_time = time.time()
+MAX_RUNTIME = 290  # 4분 50초
 
-print("🚀 닌텐도 뮤지엄 5분 스탠스 (3~7초 간격) 추적 시작...")
+print("🚀 4분 50초 감시 시작...")
 
-# 50번 반복 (평균 5초 * 50번 = 약 250초 / 5분 이내 컷)
-for i in range(50):
+while True:
+    # 4분 50초가 지나면 종료 (다음 5분 스케줄러를 위해 비켜줌)
+    if time.time() - start_time > MAX_RUNTIME:
+        print("⏰ 예정된 가동 시간 종료. 다음 스케줄을 기다립니다.")
+        break
+
     try:
-        response = requests.get(URL, params=params, headers=headers)
+        response = requests.get(URL, params=params, headers=headers, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
@@ -50,28 +60,25 @@ for i in range(50):
 
             for date in TARGET_DATES:
                 day_info = calendar_data.get(date)
-                
-                # 핵심: open_status == 1 (운영일) 이고 sale_status == 1 (예매 가능) 일 때
-                if day_info and day_info.get("open_status") == 1 and day_info.get("sale_status") == 1:
+                if day_info and day_info.get("sale_status") == 1: # 예매 가능!
                     available_dates.append(date)
 
             if available_dates:
-                msg = f"🚨🎉 [긴급] 닌텐도 뮤지엄 예매 가능!: {available_dates}\n👉 바로가기: https://museum-tickets.nintendo.com/en/calendar"
-                requests.post(DISCORD_WEBHOOK_URL, data={'content': msg})
-                print(f"[{i+1}/50] 🎉 예매 가능! 디스코드 알림 전송 완료.")
-                break # 알림을 한 번 보냈으면 이번 5분 사이클은 조기 종료
-            else:
-                print(f"[{i+1}/50] 모두 매진 상태입니다...")
-        
+                send_discord(f"🚨🎉 [발견] {available_dates} 예매 가능!!\n👉 https://museum-tickets.nintendo.com/en/calendar")
+                break # 자리 났으면 알림 쏘고 종료
+
         elif response.status_code == 403:
-             print(f"[{i+1}/50] 🚨 차단됨 (403). 쿠키가 만료되었을 수 있습니다.")
-             break
-        else:
-            print(f"[{i+1}/50] API 요청 실패 (상태 코드: {response.status_code})")
-            
-    except Exception as e:
-        print(f"[{i+1}/50] 에러 발생: {e}")
+            send_discord("❌ [에러] 403 Forbidden! 쿠키가 만료된 것 같습니다. 새로 갱신해주세요.")
+            break # 차단됐으면 종료
         
-    # 마지막 루프가 아니면 3~7초 랜덤 대기
-    if i < 49:
-        time.sleep(random.uniform(3.0, 7.0))
+        else:
+            # 500번대 서버 에러 등은 일시적일 수 있으니 디코 안 쏘고 그냥 출력만
+            print(f"서버 응답 상태 이상: {response.status_code}")
+
+    except Exception as e:
+        # 예상치 못한 에러(인터넷 끊김 등) 발생 시 디코 알림
+        send_discord(f"⚠️ [시스템 에러] 파이썬 실행 중 오류 발생: {str(e)}")
+        break # 에러 나면 일단 종료 (전역변수 초기화 효과)
+
+    # 3~7초 랜덤 대기
+    time.sleep(random.uniform(3.0, 7.0))
