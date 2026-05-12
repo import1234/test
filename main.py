@@ -20,7 +20,7 @@ def send_discord(message):
     if not WEBHOOK_URL:
         return
     try:
-        clean_url = WEBHOOK_URL.strip().strip("'").strip('"')
+        clean_url = WEBHOOK_URL
         requests.post(clean_url, json={'content': message})
     except Exception as e:
         print(f"디스코드 전송 실패: {e}")
