@@ -1,9 +1,9 @@
-name: test
+name: Nintendo Sniper
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '*/5 * * * *'  # 5분마다 실행
+  workflow_dispatch:        # 수동 실행 허용
 
 jobs:
   build:
@@ -21,6 +21,8 @@ jobs:
 
       - name: Run Sniper
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          # 시크릿 설정에서 아래 두 이름을 정확히 맞춰주셔야 합니다.
+          GENERAL_WEBHOOK: ${{ secrets.GENERAL_WEBHOOK }}
+          LOG_WEBHOOK: ${{ secrets.LOG_WEBHOOK }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: python main.py
