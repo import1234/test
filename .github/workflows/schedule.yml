@@ -17,7 +17,5 @@ jobs:
       - name: Run Sniper
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          NINTENDO_COOKIE: ${{ secrets.NINTENDO_COOKIE }}
-          NINTENDO_XSRF: ${{ secrets.NINTENDO_XSRF }}
           GITHUB_EVENT_NAME: ${{ github.event_name }} # 이벤트 이름 전달
         run: python main.py
