@@ -154,8 +154,7 @@ while True:
 
     except Exception as e:
         err_traceback = traceback.format_exc()
-        send_discord(f"⚠️ [실행 에러]\n```python\n{err_traceback[:1000]}\n
-```", mode="all")
+        send_discord(f"⚠️ [실행 에러]\n```python\n{err_traceback[:1000]}\n```", mode="all")
         break
 
     time.sleep(random.uniform(3.0, 10.0))
