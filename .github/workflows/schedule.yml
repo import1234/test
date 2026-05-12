@@ -1,29 +1,23 @@
-name: Nintendo Ticket
+name: Nintendo Ticket Sniper
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # 5분마다 무조건 실행
-  workflow_dispatch: # 내가 버튼 눌러서 강제 실행하는 옵션
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 저장소 코드 가져오기
-        uses: actions/checkout@v3
-
-      - name: 파이썬 세팅하기
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
-      - name: 필요한 패키지(requests) 설치
-        run: pip install -r requirements.txt
-
-      - name: 파이썬 스크립트 실행!
+      - run: pip install requests
+      - name: Run Sniper
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           NINTENDO_COOKIE: ${{ secrets.NINTENDO_COOKIE }}
           NINTENDO_XSRF: ${{ secrets.NINTENDO_XSRF }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }} # 이벤트 이름 전달
         run: python main.py
