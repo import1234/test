@@ -22,13 +22,15 @@ def send_discord(message, mode="all"):
     mode="all": General 채널과 Log 채널 양쪽 모두 전송
     mode="log": Log 채널에만 전송
     """
+    
+    print(message)
+    
     targets = []
     if mode == "all":
         if GENERAL_WEBHOOK: targets.append(GENERAL_WEBHOOK)
         if LOG_WEBHOOK: targets.append(LOG_WEBHOOK)
     elif mode == "log":
         if LOG_WEBHOOK: targets.append(LOG_WEBHOOK)
-    print(message)
 
     for url in targets:
         try:
