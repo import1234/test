@@ -1,4 +1,4 @@
-name: Nintendo Ticket Sniper
+name: Nintendo Ticket Detector
 
 on:
   schedule:
