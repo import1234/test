@@ -1,4 +1,4 @@
-name: Nintendo Ticket Detector
+name: test
 
 on:
   schedule:
