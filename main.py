@@ -2,6 +2,7 @@ import requests
 import time
 import random
 import os
+import traceback
 from datetime import datetime
 
 # 설정 불러오기
@@ -12,6 +13,7 @@ MY_XSRF = os.environ.get("NINTENDO_XSRF")
 IS_MANUAL = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
 
 def send_discord(message):
+    print(f"send_discord: {message}")
     try:
         requests.post(WEBHOOK_URL, json={'content': message})
     except Exception as e:
@@ -76,9 +78,15 @@ while True:
             print(f"서버 응답 상태 이상: {response.status_code}")
 
     except Exception as e:
-        # 예상치 못한 에러(인터넷 끊김 등) 발생 시 디코 알림
-        send_discord(f"⚠️ [시스템 에러] 파이썬 실행 중 오류 발생: {str(e)}")
-        break # 에러 나면 일단 종료 (전역변수 초기화 효과)
+        # traceback.format_exc()는 콘솔에 찍히는 전체 에러 로그를 문자열로 리턴함
+        err_traceback = traceback.format_exc()
+        
+        # 디스코드 알림 메시지 구성
+        # [!] 주의: 디스코드는 한 메시지당 2,000자 제한이 있으므로 너무 길면 잘릴 수 있음
+        full_message = f"⚠️ [시스템 에러] 파이썬 실행 중 오류 발생\n\n```python\n{err_traceback}\n```"
+        
+        send_discord(full_message)
+        break
 
     # 3~7초 랜덤 대기
     time.sleep(random.uniform(3.0, 7.0))
