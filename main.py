@@ -52,11 +52,21 @@ while True:
         print("⏰ 예정된 가동 시간 종료. 다음 스케줄을 기다립니다.")
         break
 
+    
     try:
         response = requests.get(URL, params=params, headers=headers, timeout=10)
         
         if response.status_code == 200:
-            data = response.json()
+            try:
+                data = response.json()
+            except Exception as json_err:
+                print("🚨 JSON 파싱 에러 발생! 서버가 반환한 진짜 내용:")
+                # 서버가 뱉은 내용 처음 1000글자만 깃허브 로그에 출력해봅니다.
+                print(response.text[:1000]) 
+                
+                send_discord("❌ [에러] 200 OK지만 JSON이 아닙니다. 봇 차단(Cloudflare) 방패에 막혔거나 로그인 페이지로 튕긴 것 같습니다. 깃허브 로그를 확인하세요!")
+                break # 종료
+
             calendar_data = data.get("data", {}).get("calendar", {})
             available_dates = []
 
@@ -70,21 +80,15 @@ while True:
                 break # 자리 났으면 알림 쏘고 종료
 
         elif response.status_code == 403:
-            send_discord("❌ [에러] 403 Forbidden! 쿠키가 만료된 것 같습니다. 새로 갱신해주세요.")
-            break # 차단됐으면 종료
+            send_discord("❌ [에러] 403 Forbidden! 쿠키가 만료되었거나 완전 차단당했습니다.")
+            break 
         
         else:
-            # 500번대 서버 에러 등은 일시적일 수 있으니 디코 안 쏘고 그냥 출력만
             print(f"서버 응답 상태 이상: {response.status_code}")
 
     except Exception as e:
-        # traceback.format_exc()는 콘솔에 찍히는 전체 에러 로그를 문자열로 리턴함
         err_traceback = traceback.format_exc()
-        
-        # 디스코드 알림 메시지 구성
-        # [!] 주의: 디스코드는 한 메시지당 2,000자 제한이 있으므로 너무 길면 잘릴 수 있음
         full_message = f"⚠️ [시스템 에러] 파이썬 실행 중 오류 발생\n\n```python\n{err_traceback}\n```"
-        
         send_discord(full_message)
         break
 
