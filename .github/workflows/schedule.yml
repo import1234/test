@@ -8,7 +8,10 @@ on:
 jobs:
   run-monitor:
     runs-on: ubuntu-latest
-
+    concurrency: 
+      group: nintendo-monitor
+      cancel-in-progress: false # 기존 것이 돌고 있으면 새 스케줄은 대기하거나 취소됨
+      
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
