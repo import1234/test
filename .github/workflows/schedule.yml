@@ -1,28 +1,31 @@
-name: Nintendo Sniper
+name: Nintendo Ticket Monitor
 
 on:
+  workflow_dispatch: # GitHub 웹에서 수동으로 실행할 수 있는 버튼 생성
   schedule:
-    - cron: '*/5 * * * *'  # 5분마다 실행
-  workflow_dispatch:        # 수동 실행 허용
+    - cron: '0 */6 * * *' # 6시간마다 자동으로 실행 (UTC 기준)
 
 jobs:
-  build:
+  run-monitor:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      
-      - name: Install dependencies
+
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install selenium requests
 
-      - name: Run Sniper
+      - name: Run Scraper Script
         env:
-          # 시크릿 설정에서 아래 두 이름을 정확히 맞춰주셔야 합니다.
+          # GitHub 레포지토리 Settings -> Secrets and variables -> Actions에 등록한 값 매핑
           GENERAL_WEBHOOK: ${{ secrets.GENERAL_WEBHOOK }}
           LOG_WEBHOOK: ${{ secrets.LOG_WEBHOOK }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-        run: python main.py
+        run: python monitor.py
