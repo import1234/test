@@ -28,4 +28,4 @@ jobs:
           # GitHub 레포지토리 Settings -> Secrets and variables -> Actions에 등록한 값 매핑
           GENERAL_WEBHOOK: ${{ secrets.GENERAL_WEBHOOK }}
           LOG_WEBHOOK: ${{ secrets.LOG_WEBHOOK }}
-        run: python monitor.py
+        run: python main.py
