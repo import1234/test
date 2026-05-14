@@ -116,7 +116,7 @@ while True:
         # 3. 결과 판별
         if available_dates:
             send_discord(f"🚨🎉 [발견] {available_dates} 예매 가능!!\n👉 {MAIN_URL}", mode="all")
-            break
+            time.sleep(30) #30초 대기 후 계속 탐색
         else:
             if loop_count % 10 == 0:
                 send_discord(f"-# [{timestamp}] {loop_count}회차 감시 중... 전부 매진", mode="log")
