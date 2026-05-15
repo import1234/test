@@ -2,7 +2,6 @@ import os
 import requests
 import time
 import random
-import traceback
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -12,6 +11,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
+
 # ==========================================
 # 🔐 Webhook 링크 (GitHub Secrets에서 불러오기)
 # ==========================================
@@ -19,10 +20,21 @@ GENERAL_WEBHOOK = os.getenv("GENERAL_WEBHOOK")
 LOG_WEBHOOK = os.getenv("LOG_WEBHOOK")
 
 def send_discord(message, mode="all"):
-    print(message)
+    # 1. 호출 시점의 한국 시간 타임스탬프 생성
+    now_str = datetime.now(ZoneInfo("Asia/Seoul")).strftime('%H:%M:%S')
+    
+    # 2. Discord 마크다운('-# ') 유지 및 타임스탬프 주입 로직
+    # '-#' 포맷이 문자열 맨 앞에 와야 디스코드에서 정상 작동하므로 순서를 조정합니다.
+    if message.startswith("-# "):
+        formatted_message = f"-# [{now_str}] {message[3:]}"
+    else:
+        formatted_message = f"[{now_str}] {message}"
+        
+    print(formatted_message)
+    
     # 웹훅 환경변수 누락 시 방어 로직
     if not GENERAL_WEBHOOK or not LOG_WEBHOOK:
-        print("⚠️ 환경변수(Webhook)가 설정되지 않았습니다.")
+        print(f"[{now_str}] ⚠️ 환경변수(Webhook)가 설정되지 않았습니다.")
         return
 
     targets = []
@@ -33,14 +45,18 @@ def send_discord(message, mode="all"):
 
     for url in targets:
         try:
-            requests.post(url, json={'content': message}, timeout=3)
+            requests.post(url, json={'content': formatted_message}, timeout=3)
         except Exception as e:
-            print(f"웹훅 전송 실패: {e}")
+            print(f"[{now_str}] 웹훅 전송 실패: {e}")
+
+
 
 # ==========================================
 # 🤖 크롬 브라우저 세팅 (GitHub Actions Ubuntu 최적화)
 # ==========================================
-send_discord("⚙️ [시스템] GitHub Actions Ubuntu 엔진 기동 중...", mode="log")
+send_discord("프로그램을 시작합니다.", mode="log")
+send_discord("⚙️ GitHub Actions Ubuntu 엔진 기동 중...", mode="log")
+send_discord("Selenium 설정 중...", mode="log")
 
 options = Options()
 options.add_argument('--headless=new')
@@ -62,6 +78,8 @@ except Exception as e:
     send_discord(f"❌ 크롬 기동 실패:\n{e}", mode="all")
     exit(1)
 
+send_discord("Selenium 설정 완료!", mode="log")
+
 TARGET_DATES = ["2026-05-23", "2026-05-24", "2026-05-25"]
 MAIN_URL = "https://museum-tickets.nintendo.com/en/calendar"
 wait = WebDriverWait(driver, 1)
@@ -73,7 +91,7 @@ wait = WebDriverWait(driver, 1)
 driver.get(MAIN_URL)
 time.sleep(2)
 
-send_discord("# 🚀 닌텐도 뮤지엄 감시 시작", mode="log")
+send_discord("🚀 닌텐도 뮤지엄 감시 시작", mode="log")
 
 loop_count = 0
 
@@ -84,11 +102,10 @@ max_duration = timedelta(hours=5, minutes=55)
 while True:
     now = datetime.now(ZoneInfo("Asia/Seoul"))
     loop_count += 1
-    timestamp = now.strftime('%H:%M:%S')
 
     # ⏱️ 5시간 55분 경과 시 안전 종료
     if now - start_time > max_duration:
-        send_discord("⏱️ [시스템] GitHub Actions 타임아웃 임박. 릴레이를 위해 스크립트를 안전 종료합니다.", mode="log")
+        send_discord("⏱️ GitHub Actions 타임아웃 임박. 릴레이를 위해 스크립트를 안전 종료합니다.", mode="log")
         break
 
     try:
@@ -101,10 +118,12 @@ while True:
         available_dates = []
 
         # 2. 날짜별 'soldOut' 클래스 유무 확인
+        found_cells = 0
         for date in TARGET_DATES:
             td_xpath = f"//td[@data-date='{date}']"
             try:
                 day_cell = wait.until(EC.presence_of_element_located((By.XPATH, td_xpath)))
+                found_cells += 1 # 실제 요소를 찾았을 때 카운트
                 sold_out_elements = day_cell.find_elements(By.CLASS_NAME, "soldOut")
                 
                 # soldOut 요소가 없다면 자리가 난 것!
@@ -112,21 +131,24 @@ while True:
                     available_dates.append(date)
             except:
                 pass
+        if found_cells == 0:
+            send_discord("⚠️ [경고] 타겟 날짜 요소를 하나도 찾지 못했습니다. 사이트 구조가 변경되었을 수 있습니다.", mode="log")
 
         # 3. 결과 판별
         if available_dates:
-            send_discord(f"🚨🎉 [발견] {available_dates} 예매 가능!!\n👉 {MAIN_URL}", mode="all")
+            send_discord(f"🔔 @here 🚨🎉 {available_dates} 예매 가능!!\n👉 {MAIN_URL}", mode="all")
+            send_discord(f"-# 30초 뒤 다시 탐색합니다...", mode="log")
             time.sleep(30) #30초 대기 후 계속 탐색
         else:
             if loop_count % 10 == 0:
-                send_discord(f"-# [{timestamp}] {loop_count}회차 감시 중... 전부 매진", mode="log")
+                send_discord(f"-# {loop_count}회차 감시 중... 전부 매진", mode="log")
 
         time.sleep(random.uniform(4.0, 9.0))
         driver.refresh()
         time.sleep(0.1)
 
     except Exception as e:
-        send_discord(f"⚠️ [루프 에러] 새로고침 중...\n{str(e)[:500]}", mode="log")
+        send_discord(f"⚠️ 루프 에러! 새로고침 중...\n{str(e)[:500]}", mode="log")
         time.sleep(1)
         driver.refresh()
 
