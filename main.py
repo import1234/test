@@ -80,7 +80,7 @@ except Exception as e:
 
 send_discord("Selenium 설정 완료!", mode="log")
 
-TARGET_DATES = ["2026-05-23", "2026-05-24", "2026-05-25"]
+TARGET_DATES = ["2026-05-24", "2026-05-25"] # "2026-05-23" 이건 이미 예매했음
 MAIN_URL = "https://museum-tickets.nintendo.com/en/calendar"
 wait = WebDriverWait(driver, 1)
 
