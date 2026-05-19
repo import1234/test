@@ -149,7 +149,7 @@ while True:
 
     except Exception as e:
         send_discord(f"⚠️ 루프 에러! 새로고침 중...\n{str(e)[:500]}", mode="log")
-        time.sleep(random.uniform(10.0,30.0)
+        time.sleep(random.uniform(10.0, 30.0))
         driver.refresh()
 
 driver.quit()
